@@ -1,0 +1,21 @@
+// src/config/supabaseClient.js
+//
+// Single place where Supabase is initialised.
+// Import { supabase } from this file wherever you need to talk to Supabase.
+//
+// Install: npm install @supabase/supabase-js
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl     = 'https://hmbqprlkljqwqfdbdjoq.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtYnFwcmxrbGpxd3FmZGJkam9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNTY3NDQsImV4cCI6MjA4OTkzMjc0NH0.aQeSJ4I0i5vuu-FvTNReV2SNlK4-sp0w0zMb_WKTVmg';
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Missing Supabase environment variables. ' +
+    'Check REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY in your .env file ' +
+    'and restart the dev server.'
+  );
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
