@@ -28,7 +28,7 @@ const ProtectedRoute = ({ children, inventorOnly, investorOnly }) => {
           color: 'var(--color-text-light)'
         }
       },
-      'Hey There! Wait for a bot there while you are being authenticated...'
+      'Hey There! Wait for a bit there while you are being authenticated...'
     );
   }
 

@@ -28,7 +28,7 @@ const AuthCallback = () => {
 
   // Guard against React Strict Mode running useEffect twice in development
   const hasRun = useRef(false);
-
+  console.log("Inside auth callback");
   useEffect(() => {
     if (hasRun.current) return;
     hasRun.current = true;
