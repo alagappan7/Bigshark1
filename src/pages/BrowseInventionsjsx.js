@@ -1,477 +1,317 @@
-// BrowseInventions.js — Vanilla JavaScript (no React/JSX)
-// Replaces the React component with plain DOM manipulation.
-// Usage: call initBrowseInventions('#app') where '#app' is your mount selector.
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import './BrowseInventions.css';
 
-function initBrowseInventions(mountSelector) {
-  const root = document.querySelector(mountSelector);
-  if (!root) {
-    console.error('BrowseInventions: mount element not found:', mountSelector);
-    return;
-  }
-
-  // ── State ────────────────────────────────────────────────────────────────
-  let inventions = [];
-  let filteredInventions = [];
-  let selectedInvention = null;
-
-  const filters = {
+const BrowseInventions = () => {
+  const { user } = useAuth();
+  const [inventions, setInventions] = useState([]);
+  const [filteredInventions, setFilteredInventions] = useState([]);
+  const [filters, setFilters] = useState({
     search: '',
     stage: 'all',
     prototypeStatus: 'all',
-    authority: 'all',
-  };
+    authority: 'all'
+  });
+  const [selectedInvention, setSelectedInvention] = useState(null);
 
-  // ── Data loading ─────────────────────────────────────────────────────────
-  function loadInventions() {
+  useEffect(() => {
+    // Load inventions from localStorage
     const posts = JSON.parse(localStorage.getItem('inventionPosts') || '[]');
-    inventions = posts;
-    filteredInventions = posts;
-  }
+    setInventions(posts);
+    setFilteredInventions(posts);
+  }, []);
 
-  // ── Filtering ─────────────────────────────────────────────────────────────
-  function applyFilters() {
-    let result = inventions;
+  useEffect(() => {
+    // Apply filters
+    let filtered = inventions;
 
     if (filters.search) {
-      const q = filters.search.toLowerCase();
-      result = result.filter(
-        (inv) =>
-          inv.patentId.toLowerCase().includes(q) ||
-          inv.problemSolved.toLowerCase().includes(q) ||
-          inv.patentProtects.toLowerCase().includes(q)
+      filtered = filtered.filter(inv => 
+        inv.patentId.toLowerCase().includes(filters.search.toLowerCase()) ||
+        inv.problemSolved.toLowerCase().includes(filters.search.toLowerCase()) ||
+        inv.patentProtects.toLowerCase().includes(filters.search.toLowerCase())
       );
     }
 
     if (filters.stage !== 'all') {
-      result = result.filter((inv) => inv.currentStage === filters.stage);
+      filtered = filtered.filter(inv => inv.currentStage === filters.stage);
     }
 
     if (filters.prototypeStatus !== 'all') {
-      result = result.filter(
-        (inv) => inv.prototypeStatus === filters.prototypeStatus
-      );
+      filtered = filtered.filter(inv => inv.prototypeStatus === filters.prototypeStatus);
     }
 
     if (filters.authority !== 'all') {
-      result = result.filter(
-        (inv) => inv.issuingAuthority === filters.authority
-      );
+      filtered = filtered.filter(inv => inv.issuingAuthority === filters.authority);
     }
 
-    filteredInventions = result;
-  }
+    setFilteredInventions(filtered);
+  }, [filters, inventions]);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function initials(name) {
-    return (name || '')
-      .split(' ')
-      .map((n) => n[0])
-      .join('');
-  }
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
 
-  function el(tag, attrs, ...children) {
-    const node = document.createElement(tag);
-    if (attrs) {
-      Object.entries(attrs).forEach(([k, v]) => {
-        if (k === 'className') {
-          node.className = v;
-        } else if (k === 'style' && typeof v === 'object') {
-          Object.assign(node.style, v);
-        } else if (k.startsWith('on') && typeof v === 'function') {
-          node.addEventListener(k.slice(2).toLowerCase(), v);
-        } else {
-          node.setAttribute(k, v);
-        }
-      });
-    }
-    children.flat().forEach((child) => {
-      if (child == null) return;
-      node.appendChild(
-        typeof child === 'string' ? document.createTextNode(child) : child
-      );
-    });
-    return node;
-  }
+  const openDetails = (invention) => {
+    setSelectedInvention(invention);
+  };
 
-  // ── Contact inventor ──────────────────────────────────────────────────────
-  function contactInventor(invention) {
-    if (
-      invention.contactMethod === 'linkedin' ||
-      invention.contactMethod === 'both'
-    ) {
+  const closeDetails = () => {
+    setSelectedInvention(null);
+  };
+
+  const contactInventor = (invention) => {
+    if (invention.contactMethod === 'linkedin' || invention.contactMethod === 'both') {
       window.open(invention.linkedInProfile, '_blank');
     } else {
       window.location.href = `mailto:${invention.inventorEmail}`;
     }
-  }
+  };
 
-  // ── Modal ─────────────────────────────────────────────────────────────────
-  function closeDetails() {
-    selectedInvention = null;
-    const overlay = root.querySelector('.modal-overlay');
-    if (overlay) overlay.remove();
-  }
+  return (
+    <div className="browse-inventions-page">
+      <div className="container">
+        <div className="page-header fade-in">
+          <h1>Browse Patent-Backed Innovations</h1>
+          <p>Discover breakthrough technologies ready for investment</p>
+        </div>
 
-  function openDetails(invention) {
-    selectedInvention = invention;
-    renderModal();
-  }
+        <div className="filters-section slide-in-right">
+          <div className="filter-group">
+            <input
+              type="text"
+              name="search"
+              value={filters.search}
+              onChange={handleFilterChange}
+              placeholder="Search patents, problems, technologies..."
+              className="search-input"
+            />
+          </div>
 
-  function detailRow(label, value) {
-    if (!value) return null;
-    return el('p', null,
-      el('strong', null, `${label}: `),
-      `${value}`
-    );
-  }
+          <div className="filter-grid">
+            <div className="filter-group">
+              <label>Development Stage</label>
+              <select name="stage" value={filters.stage} onChange={handleFilterChange}>
+                <option value="all">All Stages</option>
+                <option value="idea">Idea</option>
+                <option value="prototype">Prototype</option>
+                <option value="early-customers">Early Customers</option>
+                <option value="revenue">Revenue Generating</option>
+              </select>
+            </div>
 
-  function renderModal() {
-    // Remove any existing modal
-    const existing = root.querySelector('.modal-overlay');
-    if (existing) existing.remove();
+            <div className="filter-group">
+              <label>Prototype Status</label>
+              <select name="prototypeStatus" value={filters.prototypeStatus} onChange={handleFilterChange}>
+                <option value="all">All Statuses</option>
+                <option value="idea">Idea</option>
+                <option value="prototype">Prototype</option>
+                <option value="mvp">MVP</option>
+                <option value="production-ready">Production-Ready</option>
+              </select>
+            </div>
 
-    const inv = selectedInvention;
-    if (!inv) return;
+            <div className="filter-group">
+              <label>Patent Authority</label>
+              <select name="authority" value={filters.authority} onChange={handleFilterChange}>
+                <option value="all">All Authorities</option>
+                <option value="USPTO">USPTO</option>
+                <option value="EPO">EPO</option>
+                <option value="WIPO">WIPO</option>
+                <option value="India IPO">India IPO</option>
+              </select>
+            </div>
+          </div>
+        </div>
 
-    const overlay = el('div', {
-      className: 'modal-overlay',
-      onClick: closeDetails,
-    });
+        <div className="results-info">
+          <p>{filteredInventions.length} invention{filteredInventions.length !== 1 ? 's' : ''} found</p>
+        </div>
 
-    const content = el('div', {
-      className: 'modal-content',
-      onClick: (e) => e.stopPropagation(),
-    });
+        {filteredInventions.length === 0 ? (
+          <div className="no-results">
+            <div className="no-results-icon">🔍</div>
+            <h3>No inventions found</h3>
+            <p>Try adjusting your filters or search criteria</p>
+          </div>
+        ) : (
+          <div className="inventions-grid">
+            {filteredInventions.map((invention, index) => (
+              <div 
+                key={invention.id} 
+                className="invention-card scale-in"
+                style={{animationDelay: `${index * 0.05}s`}}
+                onClick={() => openDetails(invention)}
+              >
+                <div className="card-header">
+                  <div className="patent-badge">
+                    {invention.issuingAuthority}
+                  </div>
+                  <div className="stage-badge">
+                    {invention.currentStage}
+                  </div>
+                </div>
 
-    // Close button
-    content.appendChild(
-      el('button', { className: 'modal-close', onClick: closeDetails }, '×')
-    );
+                <div className="card-body">
+                  <h3>{invention.patentId}</h3>
+                  <p className="problem-brief">{invention.problemSolved}</p>
+                  
+                  <div className="card-meta">
+                    <div className="meta-item">
+                      <span className="meta-label">Prototype:</span>
+                      <span className="meta-value">{invention.prototypeStatus}</span>
+                    </div>
+                    <div className="meta-item">
+                      <span className="meta-label">Funding Needed:</span>
+                      <span className="meta-value">{invention.fundingRequired}</span>
+                    </div>
+                  </div>
 
-    // Header
-    const header = el('div', { className: 'modal-header' },
-      el('h2', null, inv.patentId),
-      el('div', { className: 'modal-badges' },
-        el('span', { className: 'badge badge-primary' }, inv.issuingAuthority),
-        el('span', { className: 'badge badge-secondary' }, inv.patentStatus)
-      )
-    );
-    content.appendChild(header);
+                  <div className="card-tags">
+                    {invention.lookingFor.map(item => (
+                      <span key={item} className="tag">{item}</span>
+                    ))}
+                  </div>
+                </div>
 
-    // Body
-    const body = el('div', { className: 'modal-body' });
+                <div className="card-footer">
+                  <div className="inventor-info">
+                    <div className="inventor-avatar">
+                      {invention.inventorName.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div className="inventor-details">
+                      <div className="inventor-name">{invention.inventorName}</div>
+                      <div className="inventor-location">{invention.location}</div>
+                    </div>
+                  </div>
+                  <button className="btn-view-details">View Details →</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-    // Problem & Solution
-    const sec1 = el('section', { className: 'detail-section' },
-      el('h3', null, 'Problem & Solution'),
-      detailRow('Problem', inv.problemSolved),
-      detailRow('Solution', inv.patentProtects),
-      detailRow('Target Audience', inv.targetAudience)
-    );
-    body.appendChild(sec1);
+        {/* Detail Modal */}
+        {selectedInvention && (
+          <div className="modal-overlay" onClick={closeDetails}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-close" onClick={closeDetails}>×</button>
+              
+              <div className="modal-header">
+                <h2>{selectedInvention.patentId}</h2>
+                <div className="modal-badges">
+                  <span className="badge badge-primary">{selectedInvention.issuingAuthority}</span>
+                  <span className="badge badge-secondary">{selectedInvention.patentStatus}</span>
+                </div>
+              </div>
 
-    // Technology
-    const sec2 = el('section', { className: 'detail-section' },
-      el('h3', null, 'Technology'),
-      detailRow('Key Claims', inv.keyClaims),
-      inv.technologyStack ? detailRow('Technology Stack', inv.technologyStack) : null,
-      detailRow('Prototype Status', inv.prototypeStatus)
-    );
-    body.appendChild(sec2);
+              <div className="modal-body">
+                <section className="detail-section">
+                  <h3>Problem & Solution</h3>
+                  <p><strong>Problem:</strong> {selectedInvention.problemSolved}</p>
+                  <p><strong>Solution:</strong> {selectedInvention.patentProtects}</p>
+                  <p><strong>Target Audience:</strong> {selectedInvention.targetAudience}</p>
+                </section>
 
-    // Business Model
-    const sec3 = el('section', { className: 'detail-section' },
-      el('h3', null, 'Business Model'),
-      detailRow('Business Model', inv.businessModel),
-      detailRow('Current Stage', inv.currentStage),
-      detailRow('Competitive Advantage', inv.competitiveAdvantage)
-    );
-    body.appendChild(sec3);
+                <section className="detail-section">
+                  <h3>Technology</h3>
+                  <p><strong>Key Claims:</strong> {selectedInvention.keyClaims}</p>
+                  {selectedInvention.technologyStack && (
+                    <p><strong>Technology Stack:</strong> {selectedInvention.technologyStack}</p>
+                  )}
+                  <p><strong>Prototype Status:</strong> {selectedInvention.prototypeStatus}</p>
+                </section>
 
-    // Market Opportunity
-    const sec4 = el('section', { className: 'detail-section' },
-      el('h3', null, 'Market Opportunity'),
-      inv.marketSize?.tam ? detailRow('TAM', inv.marketSize.tam) : null,
-      inv.marketSize?.sam ? detailRow('SAM', inv.marketSize.sam) : null,
-      inv.marketSize?.som ? detailRow('SOM', inv.marketSize.som) : null,
-      detailRow('Why Now', inv.whyNow)
-    );
-    body.appendChild(sec4);
+                <section className="detail-section">
+                  <h3>Business Model</h3>
+                  <p><strong>Business Model:</strong> {selectedInvention.businessModel}</p>
+                  <p><strong>Current Stage:</strong> {selectedInvention.currentStage}</p>
+                  <p><strong>Competitive Advantage:</strong> {selectedInvention.competitiveAdvantage}</p>
+                </section>
 
-    // Financials
-    const sec5 = el('section', { className: 'detail-section' },
-      el('h3', null, 'Financials'),
-      detailRow('Funding Required', inv.fundingRequired),
-      detailRow('Use of Funds', inv.useOfFunds),
-      inv.productValuation ? detailRow('Current Valuation', inv.productValuation) : null,
-      inv.futureValuation ? detailRow('Projected Valuation', inv.futureValuation) : null
-    );
-    body.appendChild(sec5);
+                <section className="detail-section">
+                  <h3>Market Opportunity</h3>
+                  {selectedInvention.marketSize.tam && (
+                    <p><strong>TAM:</strong> {selectedInvention.marketSize.tam}</p>
+                  )}
+                  {selectedInvention.marketSize.sam && (
+                    <p><strong>SAM:</strong> {selectedInvention.marketSize.sam}</p>
+                  )}
+                  {selectedInvention.marketSize.som && (
+                    <p><strong>SOM:</strong> {selectedInvention.marketSize.som}</p>
+                  )}
+                  <p><strong>Why Now:</strong> {selectedInvention.whyNow}</p>
+                </section>
 
-    // Resources
-    if (inv.googlePatentsLink || inv.pitchDeckLink || inv.demoVideoLink) {
-      const sec6 = el('section', { className: 'detail-section' },
-        el('h3', null, 'Resources')
-      );
-      if (inv.googlePatentsLink) {
-        sec6.appendChild(
-          el('p', null,
-            el('a', { href: inv.googlePatentsLink, target: '_blank', rel: 'noopener noreferrer' },
-              'View Patent on Google Patents →'
-            )
-          )
-        );
-      }
-      if (inv.pitchDeckLink) {
-        sec6.appendChild(
-          el('p', null,
-            el('a', { href: inv.pitchDeckLink, target: '_blank', rel: 'noopener noreferrer' },
-              'View Pitch Deck →'
-            )
-          )
-        );
-      }
-      if (inv.demoVideoLink) {
-        sec6.appendChild(
-          el('p', null,
-            el('a', { href: inv.demoVideoLink, target: '_blank', rel: 'noopener noreferrer' },
-              'Watch Demo Video →'
-            )
-          )
-        );
-      }
-      body.appendChild(sec6);
-    }
+                <section className="detail-section">
+                  <h3>Financials</h3>
+                  <p><strong>Funding Required:</strong> {selectedInvention.fundingRequired}</p>
+                  <p><strong>Use of Funds:</strong> {selectedInvention.useOfFunds}</p>
+                  {selectedInvention.productValuation && (
+                    <p><strong>Current Valuation:</strong> {selectedInvention.productValuation}</p>
+                  )}
+                  {selectedInvention.futureValuation && (
+                    <p><strong>Projected Valuation:</strong> {selectedInvention.futureValuation}</p>
+                  )}
+                </section>
 
-    // Inventor
-    const sec7 = el('section', { className: 'detail-section inventor-section' },
-      el('h3', null, 'Inventor'),
-      el('div', { className: 'inventor-profile' },
-        el('div', { className: 'inventor-avatar large' }, initials(inv.inventorName)),
-        el('div', null,
-          el('h4', null, inv.inventorName),
-          el('p', null, inv.backgroundSummary),
-          el('p', null,
-            el('strong', null, 'Location: '),
-            inv.location
-          )
-        )
-      )
-    );
-    body.appendChild(sec7);
+                {(selectedInvention.pitchDeckLink || selectedInvention.demoVideoLink || selectedInvention.googlePatentsLink) && (
+                  <section className="detail-section">
+                    <h3>Resources</h3>
+                    {selectedInvention.googlePatentsLink && (
+                      <p>
+                        <a href={selectedInvention.googlePatentsLink} target="_blank" rel="noopener noreferrer">
+                          View Patent on Google Patents →
+                        </a>
+                      </p>
+                    )}
+                    {selectedInvention.pitchDeckLink && (
+                      <p>
+                        <a href={selectedInvention.pitchDeckLink} target="_blank" rel="noopener noreferrer">
+                          View Pitch Deck →
+                        </a>
+                      </p>
+                    )}
+                    {selectedInvention.demoVideoLink && (
+                      <p>
+                        <a href={selectedInvention.demoVideoLink} target="_blank" rel="noopener noreferrer">
+                          Watch Demo Video →
+                        </a>
+                      </p>
+                    )}
+                  </section>
+                )}
 
-    // Actions
-    const actions = el('div', { className: 'modal-actions' });
-    const contactBtn = el('button', {
-      className: 'btn-contact',
-      onClick: () => contactInventor(inv),
-    }, 'Contact Inventor');
-    actions.appendChild(contactBtn);
-    body.appendChild(actions);
+                <section className="detail-section inventor-section">
+                  <h3>Inventor</h3>
+                  <div className="inventor-profile">
+                    <div className="inventor-avatar large">
+                      {selectedInvention.inventorName.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <h4>{selectedInvention.inventorName}</h4>
+                      <p>{selectedInvention.backgroundSummary}</p>
+                      <p><strong>Location:</strong> {selectedInvention.location}</p>
+                    </div>
+                  </div>
+                </section>
 
-    content.appendChild(body);
-    overlay.appendChild(content);
-    root.appendChild(overlay);
-  }
+                <div className="modal-actions">
+                  <button 
+                    className="btn-contact"
+                    onClick={() => contactInventor(selectedInvention)}
+                  >
+                    Contact Inventor
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
-  // ── Card rendering ────────────────────────────────────────────────────────
-  function renderCard(invention, index) {
-    const card = el('div', {
-      className: 'invention-card scale-in',
-      style: { animationDelay: `${index * 0.05}s` },
-      onClick: () => openDetails(invention),
-    });
-
-    // Card header
-    card.appendChild(
-      el('div', { className: 'card-header' },
-        el('div', { className: 'patent-badge' }, invention.issuingAuthority),
-        el('div', { className: 'stage-badge' }, invention.currentStage)
-      )
-    );
-
-    // Card body
-    const tags = el('div', { className: 'card-tags' });
-    (invention.lookingFor || []).forEach((item) => {
-      tags.appendChild(el('span', { className: 'tag' }, item));
-    });
-
-    card.appendChild(
-      el('div', { className: 'card-body' },
-        el('h3', null, invention.patentId),
-        el('p', { className: 'problem-brief' }, invention.problemSolved),
-        el('div', { className: 'card-meta' },
-          el('div', { className: 'meta-item' },
-            el('span', { className: 'meta-label' }, 'Prototype:'),
-            el('span', { className: 'meta-value' }, invention.prototypeStatus)
-          ),
-          el('div', { className: 'meta-item' },
-            el('span', { className: 'meta-label' }, 'Funding Needed:'),
-            el('span', { className: 'meta-value' }, invention.fundingRequired)
-          )
-        ),
-        tags
-      )
-    );
-
-    // Card footer
-    card.appendChild(
-      el('div', { className: 'card-footer' },
-        el('div', { className: 'inventor-info' },
-          el('div', { className: 'inventor-avatar' }, initials(invention.inventorName)),
-          el('div', { className: 'inventor-details' },
-            el('div', { className: 'inventor-name' }, invention.inventorName),
-            el('div', { className: 'inventor-location' }, invention.location)
-          )
-        ),
-        el('button', { className: 'btn-view-details' }, 'View Details →')
-      )
-    );
-
-    return card;
-  }
-
-  // ── Full render ───────────────────────────────────────────────────────────
-  function render() {
-    // Preserve modal if open
-    const existingModal = root.querySelector('.modal-overlay');
-
-    root.innerHTML = '';
-
-    // Re-attach modal if it was open
-    if (existingModal) root.appendChild(existingModal);
-
-    const container = el('div', { className: 'browse-inventions-page' },
-      el('div', { className: 'container' })
-    );
-    const inner = container.querySelector('.container');
-
-    // Page header
-    inner.appendChild(
-      el('div', { className: 'page-header fade-in' },
-        el('h1', null, 'Browse Patent-Backed Innovations'),
-        el('p', null, 'Discover breakthrough technologies ready for investment')
-      )
-    );
-
-    // Filters
-    const filtersSection = el('div', { className: 'filters-section slide-in-right' });
-
-    const searchInput = el('input', {
-      type: 'text',
-      name: 'search',
-      value: filters.search,
-      placeholder: 'Search patents, problems, technologies...',
-      className: 'search-input',
-    });
-    searchInput.addEventListener('input', (e) => {
-      filters.search = e.target.value;
-      applyFilters();
-      renderGrid();
-      renderResultsInfo();
-    });
-    filtersSection.appendChild(el('div', { className: 'filter-group' }, searchInput));
-
-    function makeSelect(name, label, options, currentValue) {
-      const select = el('select', { name });
-      options.forEach(({ value, text }) => {
-        const opt = el('option', { value }, text);
-        if (value === currentValue) opt.selected = true;
-        select.appendChild(opt);
-      });
-      select.addEventListener('change', (e) => {
-        filters[name] = e.target.value;
-        applyFilters();
-        renderGrid();
-        renderResultsInfo();
-      });
-      return el('div', { className: 'filter-group' },
-        el('label', null, label),
-        select
-      );
-    }
-
-    const filterGrid = el('div', { className: 'filter-grid' },
-      makeSelect('stage', 'Development Stage', [
-        { value: 'all', text: 'All Stages' },
-        { value: 'idea', text: 'Idea' },
-        { value: 'prototype', text: 'Prototype' },
-        { value: 'early-customers', text: 'Early Customers' },
-        { value: 'revenue', text: 'Revenue Generating' },
-      ], filters.stage),
-
-      makeSelect('prototypeStatus', 'Prototype Status', [
-        { value: 'all', text: 'All Statuses' },
-        { value: 'idea', text: 'Idea' },
-        { value: 'prototype', text: 'Prototype' },
-        { value: 'mvp', text: 'MVP' },
-        { value: 'production-ready', text: 'Production-Ready' },
-      ], filters.prototypeStatus),
-
-      makeSelect('authority', 'Patent Authority', [
-        { value: 'all', text: 'All Authorities' },
-        { value: 'USPTO', text: 'USPTO' },
-        { value: 'EPO', text: 'EPO' },
-        { value: 'WIPO', text: 'WIPO' },
-        { value: 'India IPO', text: 'India IPO' },
-      ], filters.authority)
-    );
-
-    filtersSection.appendChild(filterGrid);
-    inner.appendChild(filtersSection);
-
-    // Results info placeholder
-    const resultsInfo = el('div', { className: 'results-info', id: 'results-info' });
-    inner.appendChild(resultsInfo);
-
-    // Grid placeholder
-    const gridContainer = el('div', { id: 'grid-container' });
-    inner.appendChild(gridContainer);
-
-    root.appendChild(container);
-
-    renderResultsInfo();
-    renderGrid();
-  }
-
-  function renderResultsInfo() {
-    const el2 = root.querySelector('#results-info');
-    if (!el2) return;
-    const count = filteredInventions.length;
-    el2.innerHTML = `<p>${count} invention${count !== 1 ? 's' : ''} found</p>`;
-  }
-
-  function renderGrid() {
-    const gridContainer = root.querySelector('#grid-container');
-    if (!gridContainer) return;
-    gridContainer.innerHTML = '';
-
-    if (filteredInventions.length === 0) {
-      gridContainer.appendChild(
-        el('div', { className: 'no-results' },
-          el('div', { className: 'no-results-icon' }, '🔍'),
-          el('h3', null, 'No inventions found'),
-          el('p', null, 'Try adjusting your filters or search criteria')
-        )
-      );
-    } else {
-      const grid = el('div', { className: 'inventions-grid' });
-      filteredInventions.forEach((invention, index) => {
-        grid.appendChild(renderCard(invention, index));
-      });
-      gridContainer.appendChild(grid);
-    }
-  }
-
-  // ── Init ──────────────────────────────────────────────────────────────────
-  loadInventions();
-  applyFilters();
-  render();
-}
-
-// Auto-init if a #browse-inventions element exists in the page
-document.addEventListener('DOMContentLoaded', () => {
-  if (document.querySelector('#browse-inventions')) {
-    initBrowseInventions('#browse-inventions');
-  }
-});
+export default BrowseInventions;

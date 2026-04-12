@@ -97,14 +97,15 @@ function AppRoutes() {
         element: React.createElement(ProtectedRoute, null, React.createElement(Dashboard))
       }),
       React.createElement(Route, {
+      
         path: '/auth/callback',
-        element: React.createElement(ProtectedRoute, null, React.createElement(AuthCallback))
+        element: React.createElement(PublicRoute, null, React.createElement(AuthCallback))
       }),
       React.createElement(Route, {
         path: '/post-invention',
         element: React.createElement(
-          ProtectedRoute,
-          { inventorOnly: true },
+          PublicRoute,
+          null,
           React.createElement(PostInvention)
         )
       }),

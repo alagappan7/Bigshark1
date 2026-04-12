@@ -52,13 +52,15 @@ export const linkedInService = {
 
       // Store token
       localStorage.setItem('linkedinToken', accessToken);
+      localStorage.setItem('linkedinstate', state);
+      console.log('LinkedIn access token obtained and stored.');
 
       // Fetch user profile
       const profile = await this.getUserProfile(accessToken);
       
       // Get the role that was selected before OAuth redirect
       const role = localStorage.getItem('pendingRole') || 'inventor';
-      localStorage.removeItem('pendingRole');
+      //localStorage.removeItem('pendingRole');
 
       return {
         ...profile,

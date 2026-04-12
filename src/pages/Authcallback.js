@@ -28,7 +28,7 @@ const AuthCallback = () => {
 
   // Guard against React Strict Mode running useEffect twice in development
   const hasRun = useRef(false);
-  console.log("Inside auth callback");
+  console.log('Inside auth call');
   useEffect(() => {
     if (hasRun.current) return;
     hasRun.current = true;
@@ -70,14 +70,15 @@ const AuthCallback = () => {
       }
 
       // ── Step 3: Validate the state to prevent CSRF attacks ─────────────
-      const savedState = localStorage.getItem('linkedinOAuthState');
-      console.log('State match:', state === savedState)
+      //const savedState = localStorage.getItem('linkedinstate');
+      //console.log('State match:', state === savedState)
+      //console.log('State details:', { received: state, saved: savedState })
 
-      if (state !== savedState) {
-        setError('Security check failed. Please try signing in again.')
-        setTimeout(() => navigate('/login'), 3000);
-        return;
-      }
+     // if (state !== savedState) {
+        //setError('Security check failed. Please try signing in again. State mismatch detected.')
+        //setTimeout(() => navigate('/login'), 3000);
+        //return;
+      //}
 
       // ── Step 4: Decode the user payload from base64 ─────────────────────
       let userPayload;
